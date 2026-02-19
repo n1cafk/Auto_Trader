@@ -1,0 +1,14 @@
+.env
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.coverage
+.mypy_cache/
+
+# Runtime artifacts
+data/
+models/*.joblib
+models/*.json
+reports/
+logs/
