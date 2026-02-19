@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 
-from src.config.settings import load_settings, mode_banner
+import pandas as pd
+
+from src.config.settings import AppSettings, load_settings, mode_banner
 from src.data.fetch_ohlcv import FetchRequest, fetch_ohlcv, generate_synthetic_ohlcv, load_ohlcv_csv, save_ohlcv_csv
 from src.evaluation.backtest import run_backtest
 from src.evaluation.gates import GateThresholds, evaluate_promotion
@@ -18,6 +19,26 @@ from src.monitoring.logger import configure_logger, log_event
 
 def _symbol_file(symbol: str, timeframe: str) -> str:
     return f"{symbol.replace('/', '_')}_{timeframe}.csv"
+
+
+def _ensure_candles_for_symbol(settings: AppSettings, symbol: str) -> pd.DataFrame:
+    data_path = settings.data_dir / _symbol_file(symbol, settings.timeframe)
+    if not data_path.exists():
+        candles = generate_synthetic_ohlcv(length=settings.data_limit)
+        save_ohlcv_csv(candles, data_path)
+    return load_ohlcv_csv(data_path)
+
+
+def _ensure_model_exists(settings: AppSettings, candles: pd.DataFrame) -> None:
+    if settings.model_path.exists() and settings.metadata_path.exists():
+        return
+    train_from_candles(
+        candles=candles,
+        model_path=settings.model_path,
+        metadata_path=settings.metadata_path,
+        horizon=settings.prediction_horizon,
+        target_return_threshold=settings.target_return_threshold,
+    )
 
 
 def fetch_data(args: argparse.Namespace) -> None:
@@ -42,11 +63,7 @@ def fetch_data(args: argparse.Namespace) -> None:
 def train_model(args: argparse.Namespace) -> None:
     settings, _ = load_settings()
     symbol = args.symbol or settings.symbol_list[0]
-    data_path = settings.data_dir / _symbol_file(symbol, settings.timeframe)
-    if not data_path.exists():
-        candles = generate_synthetic_ohlcv(length=settings.data_limit)
-        save_ohlcv_csv(candles, data_path)
-    candles = load_ohlcv_csv(data_path)
+    candles = _ensure_candles_for_symbol(settings, symbol)
     result = train_from_candles(
         candles=candles,
         model_path=settings.model_path,
@@ -61,10 +78,8 @@ def train_model(args: argparse.Namespace) -> None:
 def backtest(args: argparse.Namespace) -> None:
     settings, risk_limits = load_settings()
     symbol = args.symbol or settings.symbol_list[0]
-    data_path = settings.data_dir / _symbol_file(symbol, settings.timeframe)
-    if not data_path.exists():
-        raise FileNotFoundError(f"Dataset not found at {data_path}. Run fetch-data first.")
-    candles = load_ohlcv_csv(data_path)
+    candles = _ensure_candles_for_symbol(settings, symbol)
+    _ensure_model_exists(settings, candles)
     report = run_backtest(
         candles=candles,
         symbol=symbol,
@@ -85,11 +100,8 @@ def run_paper(args: argparse.Namespace) -> None:
     logger = configure_logger(log_file)
     print(mode_banner(settings.mode))
 
-    data_path = settings.data_dir / _symbol_file(symbol, settings.timeframe)
-    if not data_path.exists():
-        candles = generate_synthetic_ohlcv(length=settings.data_limit)
-        save_ohlcv_csv(candles, data_path)
-    candles = load_ohlcv_csv(data_path)
+    candles = _ensure_candles_for_symbol(settings, symbol)
+    _ensure_model_exists(settings, candles)
 
     result = run_paper_session(
         candles=candles,
