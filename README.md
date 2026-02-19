@@ -40,6 +40,7 @@ This repository provides a **paper-trading-first AI trading bot foundation** foc
 ```text
 src/
   config/       settings + risk limits
+  dashboard/    Streamlit monitoring frontend
   data/         market data and dataset building
   features/     indicators and feature pipeline
   models/       train / predict / artifact registry
@@ -120,6 +121,21 @@ Outputs:
 - `reports/paper/<track>/<symbol>/paper_trades.csv`
 - `logs/paper_runner.log`
 
+## 8) Open the quick monitoring dashboard
+
+```bash
+make dashboard
+# or:
+streamlit run src/dashboard/app.py
+```
+
+Dashboard highlights:
+- runtime status (mode/market/provider/risk limits)
+- latest backtest gate decision
+- model metadata by track
+- paper equity curve chart + trade journal preview
+- recent runner logs
+
 ---
 
 ## Makefile shortcuts
@@ -131,6 +147,7 @@ make fetch-data
 make train
 make backtest
 make paper-run
+make dashboard
 ```
 
 ---

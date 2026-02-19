@@ -1,4 +1,4 @@
-.PHONY: install install-dev test train backtest paper-run fetch-data
+.PHONY: install install-dev test train backtest paper-run fetch-data dashboard
 
 install:
 	python3 -m pip install .
@@ -20,3 +20,6 @@ backtest:
 
 paper-run:
 	python3 -m src.cli paper-run
+
+dashboard:
+	streamlit run src/dashboard/app.py
