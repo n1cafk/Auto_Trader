@@ -1,0 +1,2 @@
+[console_scripts]
+autotrader = src.cli:main
