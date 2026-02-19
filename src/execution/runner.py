@@ -28,12 +28,19 @@ class PaperRunResult:
     final_equity: float
 
 
+def _to_utc_timestamp(value: object) -> pd.Timestamp:
+    ts = pd.Timestamp(value)
+    return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+
+
 def run_paper_session(
     candles: pd.DataFrame,
     symbol: str,
     settings: AppSettings,
     risk_limits: RiskLimits,
     output_dir: Path,
+    model_path: Path | None = None,
+    metadata_path: Path | None = None,
     logger: Any | None = None,
 ) -> PaperRunResult:
     """Run a deterministic paper session over candle history."""
@@ -41,8 +48,8 @@ def run_paper_session(
     valid = frame.dropna(subset=feature_columns).reset_index(drop=True)
     valid["up_probability"] = predict_probabilities(
         valid,
-        model_path=settings.model_path,
-        metadata_path=settings.metadata_path,
+        model_path=model_path or settings.model_path,
+        metadata_path=metadata_path or settings.metadata_path,
     )
 
     broker = PaperBroker(
@@ -95,9 +102,11 @@ def run_paper_session(
 
         equity_after = broker.portfolio_value({symbol: price})
         risk_manager.update_equity(equity_after, ts)
+        ts_utc = _to_utc_timestamp(ts)
         equity_rows.append(
             {
-                "timestamp": ts,
+                "timestamp_utc": ts_utc.to_pydatetime(),
+                "timestamp_report_tz": ts_utc.tz_convert(settings.report_timezone).to_pydatetime(),
                 "price": price,
                 "signal": signal.value,
                 "up_probability": float(row.up_probability),
@@ -118,9 +127,11 @@ def run_paper_session(
                 notional=last_exposure,
                 timestamp=last_ts,
             )
+            last_ts_utc = _to_utc_timestamp(last_ts)
             equity_rows.append(
                 {
-                    "timestamp": last_ts,
+                    "timestamp_utc": last_ts_utc.to_pydatetime(),
+                    "timestamp_report_tz": last_ts_utc.tz_convert(settings.report_timezone).to_pydatetime(),
                     "price": last_price,
                     "signal": "forced_flatten",
                     "up_probability": float(last_row["up_probability"]),

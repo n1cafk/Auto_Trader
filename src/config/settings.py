@@ -23,10 +23,10 @@ class TradingMode(str, Enum):
 class RiskLimits(BaseModel):
     """Risk guardrails used by portfolio/risk management."""
 
-    max_position_pct: float = Field(default=0.1, ge=0.0, le=1.0)
-    max_portfolio_exposure_pct: float = Field(default=0.8, ge=0.0, le=1.0)
-    max_daily_loss_pct: float = Field(default=0.03, ge=0.0, le=1.0)
-    max_drawdown_pct: float = Field(default=0.1, ge=0.0, le=1.0)
+    max_position_pct: float = Field(default=0.03, ge=0.0, le=1.0)
+    max_portfolio_exposure_pct: float = Field(default=0.35, ge=0.0, le=1.0)
+    max_daily_loss_pct: float = Field(default=0.01, ge=0.0, le=1.0)
+    max_drawdown_pct: float = Field(default=0.06, ge=0.0, le=1.0)
     stop_loss_atr_multiplier: float = Field(default=2.0, gt=0.0)
     max_open_positions: int = Field(default=3, ge=1)
 
@@ -45,13 +45,24 @@ class AppSettings(BaseSettings):
     live_trading_enabled: bool = False
     live_acknowledgement: str = ""
 
-    exchange_name: str = "binance"
-    symbols: str = "BTC/USDT,ETH/USDT"
-    timeframe: str = "1h"
+    market: str = "us_equities"
+    data_provider: str = "yfinance"
+    execution_provider: str = "paper_simulator"
+
+    training_symbols: str = (
+        "SPY,VTI,QQQ,DIA,IWM,XLK,XLF,XLV,XLE,XLP,XLU,TLT,GLD,"
+        "AAPL,MSFT,NVDA,GOOGL,AMZN,META,JNJ,PG,KO,PEP,JPM,V,MA,XOM,CVX,UNH,HD,COST"
+    )
+    safe_live_symbols: str = "SPY,VTI,QQQ"
+    timeframe: str = "1d"
+    long_term_timeframe: str = "1d"
+    intraday_timeframe: str = "15m"
+    market_timezone: str = "America/New_York"
+    report_timezone: str = "Asia/Hong_Kong"
     data_limit: int = Field(default=1000, ge=100, le=20000)
 
     initial_cash: float = Field(default=10_000.0, gt=0.0)
-    fee_rate: float = Field(default=0.001, ge=0.0, le=0.01)
+    fee_rate: float = Field(default=0.0005, ge=0.0, le=0.01)
     slippage_rate: float = Field(default=0.0005, ge=0.0, le=0.01)
 
     model_probability_threshold: float = Field(default=0.55, ge=0.5, le=0.95)
@@ -59,8 +70,9 @@ class AppSettings(BaseSettings):
     prediction_horizon: int = Field(default=1, ge=1, le=48)
     run_interval_seconds: int = Field(default=60, ge=5, le=3600)
 
-    model_path: Path = Path("models/model.joblib")
-    metadata_path: Path = Path("models/model_metadata.json")
+    model_dir: Path = Path("models")
+    model_path: Path = Path("models/long_term_model.joblib")
+    metadata_path: Path = Path("models/long_term_model_metadata.json")
     risk_limits_path: Path = Path("src/config/risk_limits.yaml")
     data_dir: Path = Path("data")
     reports_dir: Path = Path("reports")
@@ -69,7 +81,23 @@ class AppSettings(BaseSettings):
     @property
     def symbol_list(self) -> list[str]:
         """Parse comma-separated symbols."""
-        return [s.strip() for s in self.symbols.split(",") if s.strip()]
+        return [s.strip() for s in self.safe_live_symbols.split(",") if s.strip()]
+
+    @property
+    def training_symbol_list(self) -> list[str]:
+        """Broad symbol universe for learning/training."""
+        return [s.strip().upper() for s in self.training_symbols.split(",") if s.strip()]
+
+    @property
+    def safe_live_symbol_list(self) -> list[str]:
+        """Narrow lower-risk symbol set for live rollout."""
+        return [s.strip().upper() for s in self.safe_live_symbols.split(",") if s.strip()]
+
+    def model_path_for_track(self, track: Literal["long_term", "intraday"]) -> Path:
+        return self.model_dir / f"{track}_model.joblib"
+
+    def metadata_path_for_track(self, track: Literal["long_term", "intraday"]) -> Path:
+        return self.model_dir / f"{track}_model_metadata.json"
 
     @model_validator(mode="after")
     def _enforce_live_safety(self) -> "AppSettings":

@@ -1,16 +1,24 @@
-# Auto Trader (Paper-First AI Bot Foundation)
+# Auto Trader (Paper-First US ETFs + Stocks Bot Foundation)
 
-This repository provides a **paper-trading-first AI auto trading foundation** inspired by battle-tested open-source trading frameworks (especially the workflow style used in Freqtrade/FreqAI ecosystems).
+This repository provides a **paper-trading-first AI trading bot foundation** focused on a safer beginner path:
 
-> Safety policy: default mode is **paper** and live mode is blocked unless strict acknowledgements are explicitly set.
+- **US ETFs + large-cap stocks** for training
+- **safe live rollout universe** (ETF-only by default)
+- **long-term + intraday model tracks**
+- strict risk gates before any real-capital deployment
+
+> Safety policy: default mode is **paper**, with live mode blocked unless strict acknowledgements are explicitly set.
 
 ---
 
 ## What this project includes
 
-- Data ingestion and synthetic data fallback.
+- Data ingestion for US equities (default provider: `yfinance`) + synthetic fallback.
 - Leakage-aware feature engineering on OHLCV candles.
-- Baseline ML training (logistic regression classifier).
+- Multi-symbol baseline ML training (logistic regression classifier).
+- Two strategy tracks:
+  - `long_term` (default `1d`)
+  - `intraday` (default `15m`)
 - Model artifact registry (model + metadata).
 - Signal engine (probability → long/flat/short policy).
 - Risk manager guardrails:
@@ -60,7 +68,7 @@ python3 -m pip install -e ".[dev]"
 cp .env.example .env
 ```
 
-Edit `.env` as needed (symbols, timeframe, data size, thresholds).
+Edit `.env` as needed (training universe, safe live universe, timeframes, thresholds).
 
 ## 3) Validate mode and risk config
 
@@ -73,41 +81,43 @@ Expected: `PAPER TRADING MODE (safe default)`
 ## 4) Fetch market data (or generate synthetic test data)
 
 ```bash
-python3 -m src.cli fetch-data
+python3 -m src.cli fetch-data --universe training --track both
 # or offline:
-python3 -m src.cli fetch-data --synthetic
+python3 -m src.cli fetch-data --synthetic --universe training --track both
 ```
 
-## 5) Train baseline model
+## 5) Train baseline models (both tracks)
 
 ```bash
-python3 -m src.cli train
+python3 -m src.cli train --track both
 ```
 
 Outputs:
-- `models/model.joblib`
-- `models/model_metadata.json`
+- `models/long_term_model.joblib`
+- `models/long_term_model_metadata.json`
+- `models/intraday_model.joblib`
+- `models/intraday_model_metadata.json`
 
 ## 6) Run backtest and promotion gate evaluation
 
 ```bash
-python3 -m src.cli backtest
+python3 -m src.cli backtest --track long_term --symbol SPY
 ```
 
 Outputs:
-- `reports/backtest/backtest_report.json`
-- `reports/backtest/paper_equity_curve.csv`
-- `reports/backtest/paper_trades.csv`
+- `reports/backtest/<track>/<symbol>/backtest_report.json`
+- `reports/backtest/<track>/<symbol>/paper_equity_curve.csv`
+- `reports/backtest/<track>/<symbol>/paper_trades.csv`
 
 ## 7) Run paper trading simulation
 
 ```bash
-python3 -m src.cli paper-run
+python3 -m src.cli paper-run --track intraday --symbol SPY
 ```
 
 Outputs:
-- `reports/paper/paper_equity_curve.csv`
-- `reports/paper/paper_trades.csv`
+- `reports/paper/<track>/<symbol>/paper_equity_curve.csv`
+- `reports/paper/<track>/<symbol>/paper_trades.csv`
 - `logs/paper_runner.log`
 
 ---
@@ -136,7 +146,7 @@ LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_LIVE_TRADING_RISK
 ```
 
 Even after these flags, this project should still be considered a **research/paper-trading system** until extended with:
-- real exchange execution hardening
+- real broker execution hardening
 - incident monitoring
 - kill-switch orchestration
 - production reliability engineering
@@ -156,6 +166,13 @@ If gates fail, decision is one of:
 - `paper_continue`
 - `candidate_live_trial`
 
+## Recommended beginner rollout
+
+1. Train on broad universe (ETFs + large caps).
+2. Paper trade at least 45 days.
+3. Start real capital only on safe universe (`SPY,VTI,QQQ` by default).
+4. Keep long-only, no leverage, strict risk limits.
+
 ---
 
 ## Continuous improvement playbook
@@ -167,6 +184,7 @@ If gates fail, decision is one of:
 5. Run A/B paper portfolios for challenger strategies.
 6. Review every loss by cause (signal, execution, or risk handling).
 7. Do tiny-capital staged rollout only after sustained paper consistency.
+8. Promote intraday track to live only after long-term track shows stable behavior.
 
 ---
 

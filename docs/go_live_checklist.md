@@ -3,7 +3,7 @@
 Use this checklist only after the strategy has been stable in paper mode.
 
 - [ ] Backtest passed objective thresholds across multiple market regimes.
-- [ ] Paper trading has run for at least 30 consecutive days.
+- [ ] Paper trading has run for at least 45 consecutive days.
 - [ ] No unresolved critical incidents in logs/alerts.
 - [ ] Slippage and fee assumptions validated against realistic exchange behavior.
 - [ ] Max drawdown remains within approved risk policy.
@@ -12,6 +12,8 @@ Use this checklist only after the strategy has been stable in paper mode.
 - [ ] API key scopes restricted to minimum required permissions.
 - [ ] Operator on-call alert channel configured and tested.
 - [ ] Start with minimal capital allocation (pilot size).
+- [ ] Initial real-capital rollout restricted to safe ETF universe (SPY/VTI/QQQ).
+- [ ] No leverage, long-only mode enforced for initial rollout.
 - [ ] Human review sign-off completed for all gate reports.
 
 ## Sign-off

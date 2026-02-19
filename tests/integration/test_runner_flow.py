@@ -16,7 +16,7 @@ def test_runner_executes_end_to_end(tmp_path: Path) -> None:
 
     settings = AppSettings(
         mode=TradingMode.PAPER,
-        symbols="BTC/USDT",
+        safe_live_symbols="SPY",
         model_path=model_path,
         metadata_path=metadata_path,
         initial_cash=5000,
@@ -24,7 +24,7 @@ def test_runner_executes_end_to_end(tmp_path: Path) -> None:
     limits = RiskLimits()
     result = run_paper_session(
         candles=candles,
-        symbol="BTC/USDT",
+        symbol="SPY",
         settings=settings,
         risk_limits=limits,
         output_dir=tmp_path / "reports",

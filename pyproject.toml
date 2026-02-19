@@ -5,7 +5,7 @@ description = "Paper-first AI trading bot foundation inspired by proven open-sou
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "ccxt>=4.5.20",
+    "alpaca-py>=0.42.0",
     "joblib>=1.4.2",
     "numpy>=2.2.2",
     "pandas>=2.2.3",
@@ -13,6 +13,7 @@ dependencies = [
     "pydantic-settings>=2.8.0",
     "pyyaml>=6.0.2",
     "scikit-learn>=1.6.1",
+    "yfinance>=0.2.61",
 ]
 
 [project.optional-dependencies]

@@ -85,3 +85,58 @@ def train_from_candles(
         metadata_path=metadata_path,
     )
     return result
+
+
+def train_from_symbol_candles(
+    candles_by_symbol: dict[str, pd.DataFrame],
+    model_path: Path,
+    metadata_path: Path,
+    horizon: int = 1,
+    target_return_threshold: float = 0.001,
+    track_name: str = "long_term",
+) -> TrainingResult:
+    """Build datasets for many symbols, then fit one shared baseline model."""
+    bundles: list[DatasetBundle] = []
+    symbol_counts: dict[str, int] = {}
+    for symbol, candles in candles_by_symbol.items():
+        bundle = build_datasets(
+            candles=candles,
+            horizon=horizon,
+            target_return_threshold=target_return_threshold,
+        )
+        if bundle.train.empty or bundle.validation.empty:
+            continue
+        bundles.append(bundle)
+        symbol_counts[symbol] = int(len(bundle.train) + len(bundle.validation))
+
+    if not bundles:
+        raise ValueError("No valid training data available for multi-symbol training.")
+
+    feature_columns = bundles[0].feature_columns
+    target_column = bundles[0].target_column
+    combined_train = pd.concat([b.train for b in bundles], ignore_index=True)
+    combined_validation = pd.concat([b.validation for b in bundles], ignore_index=True)
+    combined_bundle = DatasetBundle(
+        train=combined_train,
+        validation=combined_validation,
+        feature_columns=feature_columns,
+        target_column=target_column,
+    )
+    result = train_baseline_model(combined_bundle)
+    metadata = {
+        **result.metadata,
+        "training_track": track_name,
+        "training_symbols": sorted(symbol_counts.keys()),
+        "training_samples_by_symbol": symbol_counts,
+    }
+    save_artifact(
+        model=result.model,
+        metadata=metadata,
+        model_path=model_path,
+        metadata_path=metadata_path,
+    )
+    return TrainingResult(
+        model=result.model,
+        metadata=metadata,
+        validation_metrics=result.validation_metrics,
+    )

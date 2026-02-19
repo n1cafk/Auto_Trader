@@ -28,6 +28,9 @@ def run_backtest(
     settings: AppSettings,
     risk_limits: RiskLimits,
     report_dir: Path,
+    model_path: Path | None = None,
+    metadata_path: Path | None = None,
+    track_name: str = "long_term",
     thresholds: GateThresholds | None = None,
 ) -> BacktestReport:
     """Run historical simulation and emit report JSON."""
@@ -37,6 +40,8 @@ def run_backtest(
         settings=settings,
         risk_limits=risk_limits,
         output_dir=report_dir,
+        model_path=model_path,
+        metadata_path=metadata_path,
     )
     metrics = summarize_performance(
         equity_curve=run_result.equity_curve,
@@ -45,6 +50,7 @@ def run_backtest(
     gate_result = evaluate_promotion(metrics, thresholds or GateThresholds())
 
     report = {
+        "track": track_name,
         "metrics": metrics.to_dict(),
         "promotion_gate": {
             "decision": gate_result.decision.value,
